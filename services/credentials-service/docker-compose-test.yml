@@ -25,6 +25,9 @@ services:
       ENABLE_AUTH: "false"
       JWKS_URI: ""
       SIGNING_ALGORITHM: "Ed25519Signature2020"
+      ANCHOR_TO_CORD: "${ANCHOR_TO_CORD}"
+      ISSUER_AGENT_BASE_URL: "${ISSUER_AGENT_BASE_URL}"
+      VERIFICATION_MIDDLEWARE_BASE_URL: "${VERIFICATION_MIDDLEWARE_BASE_URL}"
     networks:
       rcw-test:
       default:

@@ -58,6 +58,8 @@ services:
       JWKS_URI: ""
       ENABLE_AUTH: "false"
       WEB_DID_BASE_URL: "https://example.com/identity"
+      ANCHOR_TO_CORD: "false"
+      ISSUER_AGENT_BASE_URL : 
     networks:
       test:
     healthcheck:

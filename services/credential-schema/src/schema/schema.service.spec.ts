@@ -320,6 +320,7 @@ describe('SchemaService', () => {
         createdBy: schema.createdBy,
         updatedBy: schema.updatedBy,
         deprecatedId: schema.deprecatedId,
+        blockchainStatus:schema.blockchainStatus,
       })));
     });
 
