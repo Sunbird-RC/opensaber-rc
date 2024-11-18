@@ -3,7 +3,7 @@ import VcService from './vc.service';
 import { PrismaService } from '../utils/prisma.service';
 import { DidService } from '../did/did.service';
 import { VaultService } from '../utils/vault.service';
-
+import { AnchorCordService } from 'src/utils/cord.service';
 describe('DidService', () => {
   let service: VcService;
   let didService: DidService;
@@ -17,7 +17,7 @@ describe('DidService', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [VcService, PrismaService, DidService, VaultService],
+      providers: [VcService, PrismaService, DidService, VaultService,AnchorCordService],
     }).compile();
 
     service = module.get<VcService>(VcService);

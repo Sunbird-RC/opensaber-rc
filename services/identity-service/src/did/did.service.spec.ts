@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DidService } from './did.service';
 import { PrismaService } from '../utils/prisma.service';
 import { VaultService } from '../utils/vault.service';
+import { AnchorCordService } from 'src/utils/cord.service';
 import { GenerateDidDTO, VerificationKeyType } from './dtos/GenerateDidRequest.dto';
 import { ConfigService } from '@nestjs/config';
 
@@ -32,7 +33,7 @@ describe('DidService', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DidService, PrismaService, VaultService, ConfigService],
+      providers: [DidService, PrismaService, VaultService, ConfigService,AnchorCordService],
     }).compile();
 
     service = module.get<DidService>(DidService);
