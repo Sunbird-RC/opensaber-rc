@@ -16,13 +16,15 @@ import { DefinedError } from 'ajv';
 import { CreateCredentialDTO } from './dto/create-credentials.dto';
 import { UtilsService } from '../utils/utils.service';
 import { GetCredentialSchemaDTO } from './dto/getCredentialSchema.dto';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
 
 @Injectable()
 export class SchemaService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly utilService: UtilsService,
-  ) {}
+    private readonly blockchainFactory: BlockchainAnchorFactory
+  ) { }
   private logger = new Logger(SchemaService.name);
   private semanticVersionRegex =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
@@ -123,31 +125,33 @@ export class SchemaService {
       };
     });
   }
-  private shouldAnchorToCord(): boolean {
-    return (
+
+
+  /**
+ * Determines if anchoring to a blockchain is enabled based on environment variables.
+ * Checks for specific blockchain configurations and returns the appropriate method.
+ * @returns The blockchain method (e.g., 'cord', 'solana') if anchoring is enabled; otherwise, null.
+ */
+  private shouldAnchorToBlockchain(): string | null {
+    // Check if the environment variable ANCHOR_TO_CORD is set to 'true' for the CORD blockchain
+    if (
       process.env.ANCHOR_TO_CORD &&
       process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
-    );
-  }
-
-  private async anchorSchemaToCord(schemaData: any): Promise<string | null> {
-    try {
-      const anchorResponse = await this.utilService.anchorSchema({
-        schema: schemaData,
-      });
-  
-      this.logger.debug(
-        'Schema successfully anchored to Cord blockchain',
-        anchorResponse,
-      );
-  
-      return anchorResponse.schemaId;
-    } catch (err) {
-      this.logger.error('Failed to anchor schema to Cord blockchain', err);
-      throw new InternalServerErrorException(
-        'Failed to anchor schema to Cord blockchain',
-      );
+    ) {
+      return 'cord'; // Return 'cord' as the service method if CORD anchoring is enabled
     }
+
+    // Add additional checks here for other blockchains, e.g.,Solana, Ethereum, Polkadot
+    /*
+    if (
+      process.env.ANCHOR_TO_SOLANA &&
+      process.env.ANCHOR_TO_SOLANA.toLowerCase().trim() === 'true'
+    ) {
+      return 'solana'; // Return 'solana' if solana anchoring is enabled
+    }
+    */
+
+    return null; // Return null if no blockchain anchoring is required
   }
 
   async createCredentialSchema(
@@ -157,9 +161,9 @@ export class SchemaService {
   ) {
     const data = createCredentialDto.schema;
     const tags = createCredentialDto.tags;
-    let cordSchemaId: string | null = null;
+    let blockchainSchemaId: string | null = null;
     let did: string | null = null;
-  
+
     // Validate the credential schema
     if (!validate(data)) {
       this.logger.log('Schema validation failed', validate.errors.join('\n'));
@@ -170,12 +174,16 @@ export class SchemaService {
         `Schema validation failed with the following errors: ${validate.errors.join('\n')}`,
       );
     }
-  
-    // Check if ANCHOR_TO_CORD is enabled, and anchor the schema to Cord if it is
-    if (this.shouldAnchorToCord()) {
-      // Anchor the schema to Cord blockchain and retrieve the cordSchemaId (which acts as the DID)
-      cordSchemaId = await this.anchorSchemaToCord(data);
-      did = cordSchemaId;
+    // Check if anchoring to blockchain is enabled and get the method
+    const method = this.shouldAnchorToBlockchain();
+
+    if (method) {
+      // Get the appropriate service from the factory
+      const anchorService = this.blockchainFactory.getAnchorService(method);
+      const response = await anchorService.anchorSchema(data);
+
+      blockchainSchemaId = response.schemaId;
+      did = blockchainSchemaId;
     } else if (generateDID) {
       // Generate a DID if anchoring is not enabled and generateDID is true
       const didBody = {
@@ -192,19 +200,19 @@ export class SchemaService {
           },
         ],
       };
-  
+
       // Generate DID
       const generatedDidResponse = await this.utilService.generateDID(didBody);
       this.logger.debug('DID received from identity service', generatedDidResponse);
-      did = generatedDidResponse?.id || null; 
-      
+      did = generatedDidResponse?.id || null;
+
     }
-  
+
 
     const credSchema = {
       schema: {
         type: data.type,
-        id: did ? did : data.id, 
+        id: did ? did : data.id,
         version: data.version ? data.version : '0.0.0',
         name: data.name,
         author: data.author,
@@ -215,16 +223,16 @@ export class SchemaService {
       tags: tags,
       status: createCredentialDto.status,
       deprecatedId: createCredentialDto.deprecatedId,
-      blockchainStatus: cordSchemaId ? 'ANCHORED' : 'PENDING', 
+      blockchainStatus: blockchainSchemaId ? 'ANCHORED' : 'PENDING',
     };
 
-  //     // sign the credential schema (only the schema part of the credSchema object above since it is the actual schema)
-  //     // const proof = await this.utilService.sign(
-  //     //   credSchema.schema.author,
-  //     //   credSchema.schema,
-  //     // );
-  //     // credSchema.schema.proof = proof;
-  
+    //     // sign the credential schema (only the schema part of the credSchema object above since it is the actual schema)
+    //     // const proof = await this.utilService.sign(
+    //     //   credSchema.schema.author,
+    //     //   credSchema.schema,
+    //     // );
+    //     // credSchema.schema.proof = proof;
+
     // Save the credential schema to the database
     try {
       const resp = await this.prisma.verifiableCredentialSchema.create({
@@ -240,24 +248,24 @@ export class SchemaService {
           proof: credSchema.schema.proof as Prisma.JsonValue || undefined,
           tags: credSchema.tags as string[],
           deprecatedId: deprecatedId,
-          blockchainStatus: cordSchemaId ? 'ANCHORED' : 'PENDING', 
+          blockchainStatus: blockchainSchemaId ? 'ANCHORED' : 'PENDING',
         },
       });
-  
-   
+
+
       credSchema['createdAt'] = resp.createdAt;
       credSchema['updatedAt'] = resp.updatedAt;
       credSchema['deletedAt'] = resp.deletedAt;
       credSchema['createdBy'] = resp.createdBy;
       credSchema['updatedBy'] = resp.updatedBy;
-  
+
       return credSchema;
     } catch (err) {
       this.logger.error('Error saving schema to db', err);
       throw new InternalServerErrorException('Error saving schema to db');
     }
   }
-  
+
 
   private formatResponse(schema: VerifiableCredentialSchema) {
     return JSON.parse(

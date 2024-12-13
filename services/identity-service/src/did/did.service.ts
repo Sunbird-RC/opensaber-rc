@@ -249,12 +249,6 @@ export class DidService {
     return this.resolveDID(webDidId);
   }
 
-  private shouldAnchorToCord(): boolean {
-    return (
-      process.env.ANCHOR_TO_CORD &&
-      process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
-    );
-  }
 
 /**
  * Determines if anchoring to a blockchain is enabled based on environment variables.
