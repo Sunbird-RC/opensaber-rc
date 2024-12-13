@@ -5,13 +5,14 @@ import { HttpModule, HttpService } from '@nestjs/axios';
 import { IdentityUtilsService } from './utils/identity.utils.service';
 import { RenderingUtilsService } from './utils/rendering.utils.service';
 import { SchemaUtilsSerivce } from './utils/schema.utils.service';
-import {AnchorCordUtilsServices} from './utils/cord.utils.service'
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
+import { AnchorCordService } from './implementations/anchor-cord.service';
 import { PrismaClient } from '@prisma/client';
 
 @Module({
   imports: [HttpModule],
-  providers: [ CredentialsService, PrismaClient, IdentityUtilsService, RenderingUtilsService, SchemaUtilsSerivce,AnchorCordUtilsServices],
+  providers: [CredentialsService, PrismaClient, IdentityUtilsService, RenderingUtilsService, SchemaUtilsSerivce, BlockchainAnchorFactory, AnchorCordService],
   controllers: [CredentialsController],
   exports: [IdentityUtilsService]
 })
-export class CredentialsModule {}
+export class CredentialsModule { }

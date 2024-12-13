@@ -13,7 +13,8 @@ import { JwtCredentialSubject } from 'src/app.interface';
 import { SchemaUtilsSerivce } from './utils/schema.utils.service';
 import { IdentityUtilsService } from './utils/identity.utils.service';
 import { RenderingUtilsService } from './utils/rendering.utils.service';
-import { AnchorCordUtilsServices } from './utils/cord.utils.service';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
+
 import * as jsigs from 'jsonld-signatures';
 import * as jsonld from 'jsonld';
 import { DOCUMENTS } from './documents';
@@ -43,7 +44,7 @@ export class CredentialsService {
     private readonly identityUtilsService: IdentityUtilsService,
     private readonly renderingUtilsService: RenderingUtilsService,
     private readonly schemaUtilsService: SchemaUtilsSerivce,
-    private readonly anchorCordUtilsServices: AnchorCordUtilsServices
+    private readonly blockchainFactory: BlockchainAnchorFactory
   ) {
     this.init();
   }
@@ -150,9 +151,14 @@ export class CredentialsService {
 
   async verifyCredential(credToVerify: Verifiable<W3CCredential>, status?: VCStatus) {
     try {
-      // If ANCHOR_TO_CORD is true, delegate verification to Cord Verification MiddleWare service
-      if (this.shouldAnchorToCord()) {
-        return await this.anchorCordUtilsServices.verifyCredentialOnCord(credToVerify);
+      // Check if anchoring to blockchain is enabled and get the method
+      const method = this.shouldAnchorToBlockchain();
+  
+      if (method) {
+        // Get the appropriate service from the factory
+        const anchorService = this.blockchainFactory.getAnchorService(method);
+        // delegate verification to appropriate service
+        return await anchorService.verifyCredential(credToVerify);
       }
       // calling identity service to verify the issuer DID
       const issuerId = (credToVerify.issuer?.id || credToVerify.issuer) as string;
@@ -278,9 +284,15 @@ export class CredentialsService {
 
     let response: any = null;
 
+    // Check if anchoring to blockchain is enabled and get the method
+    const method = this.shouldAnchorToBlockchain();
+
     // Check if ANCHOR_TO_CORD is true
-    if (this.shouldAnchorToCord()) {
-      response = await this.anchorCredentialToCord(credInReq, issueRequest);
+    if (method) {
+      // Get the appropriate service from the factory
+      const anchorService = this.blockchainFactory.getAnchorService(method);
+      const anchoredCredentialData = await anchorService.anchorCredential(issueRequest);
+      response = this.saveCredentialToDatabase(anchoredCredentialData)
     } else {
       // Check for issuance date
       if (!credInReq.issuanceDate) {
@@ -322,59 +334,35 @@ export class CredentialsService {
     return response;
   }
 
-  /**
-   * Determines if ANCHOR_TO_CORD environment variable is true
-   */
-  private shouldAnchorToCord(): boolean {
-    return process.env.ANCHOR_TO_CORD && process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true';
-  }
+
 
   /**
-   * Anchors the credential to Cord blockchain and saves to the DB
-   */
-  private async anchorCredentialToCord(credInReq: any, issueRequest: IssueCredentialDTO) {
-    if (!issueRequest.credentialSchemaId) {
-
-      this.logger.error('Credential SchemaId Schema ID is required for anchoring but is missing');
-      throw new BadRequestException('Cord Schema ID is missing');
+ * Determines if anchoring to a blockchain is enabled based on environment variables.
+ * Checks for specific blockchain configurations and returns the appropriate method.
+ * @returns The blockchain method (e.g., 'cord', 'solana') if anchoring is enabled; otherwise, null.
+ */
+  private shouldAnchorToBlockchain(): string | null {
+    // Check if the environment variable ANCHOR_TO_CORD is set to 'true' for the CORD blockchain
+    if (
+      process.env.ANCHOR_TO_CORD &&
+      process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
+    ) {
+      return 'cord'; // Return 'cord' as the service method if CORD anchoring is enabled
     }
 
-    try {
-      this.logger.debug('Anchoring unsigned credential to Cord blockchain with schema ID:', issueRequest.credentialSchemaId);
-
-      const anchorResponse = await this.anchorCordUtilsServices.anchorCredential({
-        ...credInReq,
-        schemaId: issueRequest.credentialSchemaId,
-      });
-
-      this.logger.debug('Credential successfully anchored to Cord:', anchorResponse);
-
-      const {
-        id, issuer, issuanceDate, validUntil: expirationDate, credentialSubject, proof,
-      } = anchorResponse.vc;
-
-      const anchoredCredentialData = {
-        id,
-        type: issueRequest.credential.type,
-        issuer,
-        issuanceDate,
-        expirationDate,
-        subject: credentialSubject,
-        subjectId: (credentialSubject as JwtCredentialSubject).id,
-        proof,
-        credential_schema: issueRequest.credentialSchemaId,
-        signed: anchorResponse.vc as object,
-        tags: issueRequest.tags,
-        blockchainStatus: "ANCHORED"
-
-      };
-
-      return this.saveCredentialToDatabase(anchoredCredentialData);
-    } catch (err) {
-      this.logger.error('Error anchoring credential to Cord blockchain:', err);
-      throw new InternalServerErrorException('Error anchoring credential to Cord blockchain');
+    // Add additional checks here for other blockchains, e.g.,Solana, Ethereum, Polkadot
+    /*
+    if (
+      process.env.ANCHOR_TO_SOLANA &&
+      process.env.ANCHOR_TO_SOLANA.toLowerCase().trim() === 'true'
+    ) {
+      return 'solana'; // Return 'solana' if solana anchoring is enabled
     }
+    */
+
+    return null; // Return null if no blockchain anchoring is required
   }
+
 
   /**
    * Signs the credential locally and saves it to the database
@@ -415,7 +403,6 @@ export class CredentialsService {
    * Saves the credential to the database and returns the response
    */
   private async saveCredentialToDatabase(credentialData: any) {
-
     const newCred = await this.prisma.verifiableCredentials.create({
       data: credentialData,
     });
