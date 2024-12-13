@@ -5,8 +5,8 @@ import { PrismaService } from 'src/utils/prisma.service';
 import { DidController } from './did.controller';
 import { DidService } from './did.service';
 import { VaultService } from '../utils/vault.service';
-import { AnchorCordService } from 'src/utils/cord.service';
-
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
+import { AnchorCordService } from './implementations/anchor-cord.service';
 @Module({
   imports: [HttpModule],
   controllers: [DidController],
@@ -14,7 +14,8 @@ import { AnchorCordService } from 'src/utils/cord.service';
     DidService,
     PrismaService,
     VaultService,
-    AnchorCordService
+    AnchorCordService,
+    BlockchainAnchorFactory
   ],
 })
 export class DidModule {}

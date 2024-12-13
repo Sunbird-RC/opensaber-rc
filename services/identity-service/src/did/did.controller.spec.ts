@@ -4,7 +4,6 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { DidService } from './did.service';
 import { PrismaService } from '../utils/prisma.service';
 import { VaultService } from '../utils/vault.service';
-import { AnchorCordService } from 'src/utils/cord.service';
 import { ConfigService } from '@nestjs/config';
 
 describe('DidController', () => {
@@ -39,7 +38,8 @@ describe('DidController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DidController],
-      providers: [DidService, PrismaService, ConfigService, VaultService,AnchorCordService]
+      // providers: [DidService, PrismaService, ConfigService, VaultService,AnchorCordService]
+      providers: [DidService, PrismaService, ConfigService, VaultService]
     }).compile();
 
     controller = module.get<DidController>(DidController);

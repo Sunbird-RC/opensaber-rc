@@ -5,7 +5,8 @@ import { VaultService } from '../utils/vault.service';
 import { Identity } from '@prisma/client';
 import { RSAKeyPair } from 'crypto-ld';
 import { GenerateDidDTO } from './dtos/GenerateDidRequest.dto';
-import { AnchorCordService } from 'src/utils/cord.service';
+// import { AnchorCordService } from 'src/utils/cord.service';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
 
 const { DIDDocument } = require('did-resolver');
 type DIDDocument = typeof DIDDocument;
@@ -22,7 +23,7 @@ export class DidService {
   webDidPrefix: string;
   signingAlgorithm: string;
   didResolver: any;
-  constructor(private prisma: PrismaService, private vault: VaultService , private anchorcord:AnchorCordService) {
+  constructor(private prisma: PrismaService, private vault: VaultService , private blockchainFactory:BlockchainAnchorFactory) {
     let baseUrl: string = process.env.WEB_DID_BASE_URL;
     this.webDidPrefix = this.getDidPrefixForBaseUrl(baseUrl);
     this.signingAlgorithm = process.env.SIGNING_ALGORITHM;
@@ -103,18 +104,22 @@ export class DidService {
     let document: DIDDocument;
     let privateKeys: object;
     let blockchainStatus: boolean = false;
-  
-    if (this.shouldAnchorToCord()) {
+
+     // Check if anchoring to blockchain is enabled and get the method
+     const method = this.shouldAnchorToBlockchain();
+
+     if (method) {
       try {
-        if (doc.method !== 'cord') {
-          throw new BadRequestException('Invalid method: only "cord" is allowed for anchoring to Cord.');
-        }
-        const response = await this.anchorcord.anchorDid(doc);
-        didUri = response.document.uri;  
-        document = response.document;    
-        
-        // store mnemonic and delegate keys in to vault
-        privateKeys = {
+      // Get the appropriate service from the factory
+      const anchorService = this.blockchainFactory.getAnchorService(method);
+      // Use the service to anchor the DID
+      const response = await anchorService.anchorDid(doc);
+
+      didUri = response.document.uri;
+      document = response.document;
+       
+      // store mnemonic and delegate keys in to vault
+      privateKeys = {
           "mnemonic":response.mnemonic,
           "delegateKeys":response.delegateKeys
         };  
@@ -250,4 +255,34 @@ export class DidService {
       process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
     );
   }
+
+/**
+ * Determines if anchoring to a blockchain is enabled based on environment variables.
+ * Checks for specific blockchain configurations and returns the appropriate method.
+ * @returns The blockchain method (e.g., 'cord', 'solana') if anchoring is enabled; otherwise, null.
+ */
+private shouldAnchorToBlockchain(): string | null {
+  // Check if the environment variable ANCHOR_TO_CORD is set to 'true' for the CORD blockchain
+  if (
+    process.env.ANCHOR_TO_CORD &&
+    process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
+  ) {
+    return 'cord'; // Return 'cord' as the service method if CORD anchoring is enabled
+  }
+
+  // Add additional checks here for other blockchains, e.g.,Solana, Ethereum, Polkadot
+  /*
+  if (
+    process.env.ANCHOR_TO_SOLANA &&
+    process.env.ANCHOR_TO_SOLANA.toLowerCase().trim() === 'true'
+  ) {
+    return 'solana'; // Return 'solana' if solana anchoring is enabled
+  }
+  */
+
+  return null; // Return null if no blockchain anchoring is required
 }
+
+  
+}
+

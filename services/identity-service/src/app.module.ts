@@ -13,8 +13,8 @@ import { AuthGuard } from './auth/auth.guard';
 import { TerminusModule } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './utils/prisma.health';
 import { VaultHealthIndicator } from './utils/vault.health';
-import { AnchorCordService } from './utils/cord.service';
-
+import { AnchorCordService } from './did/implementations/anchor-cord.service';
+import { BlockchainAnchorFactory } from './did/factories/blockchain-anchor.factory';
 @Module({
   imports: [
     DidModule,
@@ -27,7 +27,7 @@ import { AnchorCordService } from './utils/cord.service';
   ],
   controllers: [AppController, DidController],
   providers: [
-    PrismaService, DidService, VaultService,AnchorCordService,
+    PrismaService, DidService, VaultService,BlockchainAnchorFactory,AnchorCordService,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
