@@ -138,7 +138,7 @@ export class SchemaService {
       process.env.ANCHOR_TO_CORD &&
       process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
     ) {
-      return 'cord'; // Return 'cord' as the service method if CORD anchoring is enabled
+      return 'cord'; 
     }
 
     // Add additional checks here for other blockchains, e.g.,Solana, Ethereum, Polkadot
