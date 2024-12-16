@@ -3,7 +3,8 @@ import VcService from './vc.service';
 import { PrismaService } from '../utils/prisma.service';
 import { DidService } from '../did/did.service';
 import { VaultService } from '../utils/vault.service';
-// import { AnchorCordService } from 'src/utils/cord.service';
+import { BlockchainAnchorFactory } from 'src/did/factories/blockchain-anchor.factory';
+import { AnchorCordService } from 'src/did/implementations/anchor-cord.service';
 describe('DidService', () => {
   let service: VcService;
   let didService: DidService;
@@ -17,8 +18,7 @@ describe('DidService', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [VcService, PrismaService, DidService, VaultService],
-      // providers: [VcService, PrismaService, DidService, VaultService,AnchorCordService],
+      providers: [VcService, PrismaService, DidService, VaultService,BlockchainAnchorFactory,AnchorCordService],
     }).compile();
 
     service = module.get<VcService>(VcService);
