@@ -5,7 +5,7 @@ import { UnsignedVCValidator, VCValidator } from './types/validators';
 import { SchemaUtilsSerivce } from './utils/schema.utils.service';
 import { IdentityUtilsService } from './utils/identity.utils.service';
 import { RenderingUtilsService } from './utils/rendering.utils.service';
-import { AnchorCordUtilsServices } from './utils/cord.utils.service';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
 import { PrismaClient } from '@prisma/client';
 import {
   generateCredentialRequestPayload,
@@ -57,7 +57,7 @@ describe('CredentialsService', () => {
         RenderingUtilsService,
         SchemaUtilsSerivce,
         IdentityUtilsService,
-        AnchorCordUtilsServices,
+        BlockchainAnchorFactory,
       ],
     }).compile();
 
