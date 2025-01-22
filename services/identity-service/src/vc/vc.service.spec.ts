@@ -5,6 +5,7 @@ import { DidService } from '../did/did.service';
 import { VaultService } from '../utils/vault.service';
 import { BlockchainAnchorFactory } from 'src/did/factories/blockchain-anchor.factory';
 import { AnchorCordService } from 'src/did/implementations/anchor-cord.service';
+import { HttpModule } from '@nestjs/axios';
 describe('DidService', () => {
   let service: VcService;
   let didService: DidService;
@@ -18,6 +19,7 @@ describe('DidService', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [HttpModule],
       providers: [VcService, PrismaService, DidService, VaultService,BlockchainAnchorFactory,AnchorCordService],
     }).compile();
 

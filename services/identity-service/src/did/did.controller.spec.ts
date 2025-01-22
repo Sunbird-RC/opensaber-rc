@@ -5,7 +5,9 @@ import { DidService } from './did.service';
 import { PrismaService } from '../utils/prisma.service';
 import { VaultService } from '../utils/vault.service';
 import { ConfigService } from '@nestjs/config';
-
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
+import { AnchorCordService } from './implementations/anchor-cord.service';
+import { HttpModule } from '@nestjs/axios';
 describe('DidController', () => {
   let controller: DidController;
   let content: any;
@@ -37,9 +39,9 @@ describe('DidController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [HttpModule],
       controllers: [DidController],
-      // providers: [DidService, PrismaService, ConfigService, VaultService,AnchorCordService]
-      providers: [DidService, PrismaService, ConfigService, VaultService]
+      providers: [DidService, PrismaService, ConfigService, VaultService,BlockchainAnchorFactory,AnchorCordService]
     }).compile();
 
     controller = module.get<DidController>(DidController);
