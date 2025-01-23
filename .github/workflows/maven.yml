@@ -37,6 +37,11 @@ jobs:
         chmod +x /usr/local/bin/docker-compose
         docker-compose --version
       # debug step
+    - name: Install Docker Compose 1.29.2-1
+      run: |
+        curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+        docker-compose --version
 #    - name: Setup upterm session
 #      uses: lhotari/action-upterm@v1
 #      with:
