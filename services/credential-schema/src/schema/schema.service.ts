@@ -215,7 +215,7 @@ private shouldAnchorToBlockchain(): string | null {
       tags: tags,
       status: createCredentialDto.status,
       deprecatedId: createCredentialDto.deprecatedId,
-      blockchainStatus: blockchainSchemaId ? 'ANCHORED' : 'PENDING',
+      blockchainStatus: blockchainSchemaId ? 'ANCHORED' : null,
     };
 
     //     // sign the credential schema (only the schema part of the credSchema object above since it is the actual schema)
@@ -240,7 +240,7 @@ private shouldAnchorToBlockchain(): string | null {
           proof: credSchema.schema.proof as Prisma.JsonValue || undefined,
           tags: credSchema.tags as string[],
           deprecatedId: deprecatedId,
-          blockchainStatus: blockchainSchemaId ? 'ANCHORED' : 'PENDING',
+          blockchainStatus: blockchainSchemaId ? 'ANCHORED' : null,
         },
       });
 

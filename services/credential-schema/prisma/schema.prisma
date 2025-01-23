@@ -41,7 +41,7 @@ model VerifiableCredentialSchema {
   tags         String[]
   status       SchemaStatus @default(DRAFT)
   deprecatedId String?
-  blockchainStatus  BlockchainStatus  @default(PENDING)
+  blockchainStatus BlockchainStatus?
 
   @@id([id, version])
   @@index([type], type: Hash)
