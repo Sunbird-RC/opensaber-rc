@@ -58,7 +58,8 @@ services:
       JWKS_URI: ""
       ENABLE_AUTH: "false"
       WEB_DID_BASE_URL: "https://example.com/identity"
-      ANCHOR_TO_CORD: "false"
+      ANCHOR_TO_BLOCKCHAIN: "false"
+      BLOCKCHAIN_TYPE:
       ISSUER_AGENT_BASE_URL : 
     networks:
       test:

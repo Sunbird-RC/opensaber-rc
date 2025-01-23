@@ -250,32 +250,24 @@ export class DidService {
   }
 
 
-/**
+
+  /**
  * Determines if anchoring to a blockchain is enabled based on environment variables.
- * Checks for specific blockchain configurations and returns the appropriate method.
- * @returns The blockchain method (e.g., 'cord', 'solana') if anchoring is enabled; otherwise, null.
+ * Returns the blockchain type in lowercase if anchoring is enabled; otherwise, null.
+ * @returns The blockchain type (e.g., 'cord', 'solana') in lowercase if anchoring is enabled; otherwise, null.
  */
-private shouldAnchorToBlockchain(): string | null {
-  // Check if the environment variable ANCHOR_TO_CORD is set to 'true' for the CORD blockchain
-  if (
-    process.env.ANCHOR_TO_CORD &&
-    process.env.ANCHOR_TO_CORD.toLowerCase().trim() === 'true'
-  ) {
-    return 'cord'; // Return 'cord' as the service method if CORD anchoring is enabled
+  private shouldAnchorToBlockchain(): string | null {
+    // Check if anchoring is enabled
+    if (
+      process.env.ANCHOR_TO_BLOCKCHAIN &&
+      process.env.ANCHOR_TO_BLOCKCHAIN.toLowerCase().trim() === 'true'
+    ) {
+      // Return the value of BLOCKCHAIN_TYPE in lowercase (default to null if undefined)
+      return process.env.BLOCKCHAIN_TYPE?.toLowerCase().trim() || null;
+    }
+  
+    return null; // Return null if blockchain anchoring is not enabled
   }
-
-  // Add additional checks here for other blockchains, e.g.,Solana, Ethereum, Polkadot
-  /*
-  if (
-    process.env.ANCHOR_TO_SOLANA &&
-    process.env.ANCHOR_TO_SOLANA.toLowerCase().trim() === 'true'
-  ) {
-    return 'solana'; // Return 'solana' if solana anchoring is enabled
-  }
-  */
-
-  return null; // Return null if no blockchain anchoring is required
-}
 
   
 }
