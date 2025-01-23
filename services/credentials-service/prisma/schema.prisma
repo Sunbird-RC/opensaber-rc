@@ -42,7 +42,7 @@ model VerifiableCredentials {
   createdBy         String?
   updatedBy         String?
   tags              String[]
-  blockchainStatus   BlockchainStatusEnum  @default(PENDING)
+  blockchainStatus BlockchainStatusEnum?
 }
 
 model RevocationLists {
