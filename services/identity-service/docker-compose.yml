@@ -59,6 +59,10 @@ services:
       JWKS_URI: 
       ENABLE_AUTH: "false"
       WEB_DID_BASE_URL: 
+      ANCHOR_TO_BLOCKCHAIN: "false"
+      BLOCKCHAIN_TYPE:
+      ISSUER_AGENT_BASE_URL : 
+
     healthcheck:
       test:
         [ "CMD-SHELL", "curl -f http://localhost:3332/health || exit 1" ]

@@ -6,7 +6,8 @@ import { ValidateTemplateService } from './validate-template.service';
 import { SchemaService } from '../schema/schema.service';
 import { UtilsService } from '../utils/utils.service';
 import { PrismaClient } from '@prisma/client';
-
+import { BlockchainAnchorFactory } from '../schema/factories/blockchain-anchor.factory';
+import { AnchorCordService } from '../schema/implementations/anchor-cord.service';
 describe('RenderingTemplatesController', () => {
   let controller: RenderingTemplatesController;
 
@@ -20,6 +21,8 @@ describe('RenderingTemplatesController', () => {
         ValidateTemplateService,
         SchemaService,
         UtilsService,
+        BlockchainAnchorFactory,
+        AnchorCordService
       ],
     }).compile();
 

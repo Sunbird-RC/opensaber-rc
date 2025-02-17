@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   InternalServerErrorException,
+  HttpException,
   Logger,
   Param,
   Post,
@@ -44,6 +45,9 @@ export class DidController {
     try {
       return await Promise.all(promises);
     } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
       Logger.error(err);
       throw new InternalServerErrorException(err?.message);
     }

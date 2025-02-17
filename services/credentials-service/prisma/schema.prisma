@@ -18,6 +18,12 @@ enum VCStatus {
   REVOKED
 }
 
+enum BlockchainStatusEnum {
+  PENDING
+  ANCHORED
+  FAILED
+}
+
 model VerifiableCredentials {
   id                String    @id @default(uuid())
   type              String[]
@@ -36,6 +42,7 @@ model VerifiableCredentials {
   createdBy         String?
   updatedBy         String?
   tags              String[]
+  blockchainStatus BlockchainStatusEnum?
 }
 
 model RevocationLists {

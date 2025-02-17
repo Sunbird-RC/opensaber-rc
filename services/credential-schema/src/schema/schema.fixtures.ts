@@ -85,6 +85,7 @@ export const testSchemaRespose1: VerifiableCredentialSchema = {
   tags: ['degree', 'computer science', 'bachelor'],
   status: 'DRAFT',
   deprecatedId: null,
+  blockchainStatus: null
 };
 
 export const testSchemaRespose2: VerifiableCredentialSchema = {
@@ -104,4 +105,5 @@ export const testSchemaRespose2: VerifiableCredentialSchema = {
   tags: ['certification', 'blockchain', 'expert'],
   status: 'DRAFT',
   deprecatedId: null,
+  blockchainStatus: null, 
 };

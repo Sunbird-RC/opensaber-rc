@@ -27,6 +27,10 @@ services:
       SCHEMA_BASE_URL: 
       ENABLE_AUTH: "false"
       JWKS_URI: ""
+      ANCHOR_TO_BLOCKCHAIN: "${ANCHOR_TO_BLOCKCHAIN}"
+      BLOCKCHAIN_TYPE: "${BLOCKCHAIN_TYPE}"
+      ISSUER_AGENT_BASE_URL: "${ISSUER_AGENT_BASE_URL}"
+      VERIFICATION_MIDDLEWARE_BASE_URL: "${VERIFICATION_MIDDLEWARE_BASE_URL}"
     healthcheck:
       test:
         [ "CMD-SHELL", "curl -f http://localhost:3000/health || exit 1" ]

@@ -1,10 +1,12 @@
-import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, NotFoundException ,BadRequestException,HttpException} from '@nestjs/common';
 import { PrismaService } from '../utils/prisma.service';
 import { v4 as uuid } from 'uuid';
 import { VaultService } from '../utils/vault.service';
 import { Identity } from '@prisma/client';
 import { RSAKeyPair } from 'crypto-ld';
 import { GenerateDidDTO } from './dtos/GenerateDidRequest.dto';
+// import { AnchorCordService } from 'src/utils/cord.service';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
 
 const { DIDDocument } = require('did-resolver');
 type DIDDocument = typeof DIDDocument;
@@ -21,7 +23,7 @@ export class DidService {
   webDidPrefix: string;
   signingAlgorithm: string;
   didResolver: any;
-  constructor(private prisma: PrismaService, private vault: VaultService) {
+  constructor(private prisma: PrismaService, private vault: VaultService , private blockchainFactory:BlockchainAnchorFactory) {
     let baseUrl: string = process.env.WEB_DID_BASE_URL;
     this.webDidPrefix = this.getDidPrefixForBaseUrl(baseUrl);
     this.signingAlgorithm = process.env.SIGNING_ALGORITHM;
@@ -97,86 +99,121 @@ export class DidService {
     if(name && !verificationKey) throw new NotFoundException("Verification Key '" + name + "' not found");
     return verificationKey;
   }
-
   async generateDID(doc: GenerateDidDTO): Promise<DIDDocument> {
-    // Create a UUID for the DID using uuidv4
-    const didUri: string = this.generateDidUri(doc?.method, doc?.id, doc?.webDidBaseUrl);
-
-    // Create private/public key pair
-    let authnKeys;
+    let didUri: string;
+    let document: DIDDocument;
     let privateKeys: object;
-    let verificationKey =  await this.getVerificationKeyByName(doc?.keyPairType);
-    if(!verificationKey) verificationKey = await this.getVerificationKey(this.signingAlgorithm);
-    try {
-      const keyPair = await (verificationKey as any)?.key.generate({
-        id: `${didUri}#key-0`,
-        controller: didUri
-      });
-      const exportedKey = await keyPair.export({
-        publicKey: true, privateKey: true, includeContext: true
-      });
-      let privateKey = {};
-      if(verificationKey?.name === "Ed25519VerificationKey2020") {
-        const {privateKeyMultibase, ...rest } = exportedKey;
-        authnKeys = rest;
-        privateKey = {privateKeyMultibase};
-      } else if(verificationKey?.name === "Ed25519VerificationKey2018") {
-        const {privateKeyBase58, ...rest } = exportedKey;
-        authnKeys = rest;
-        privateKey = {privateKeyBase58};
-      } else if(verificationKey?.name === "RsaVerificationKey2018") {
-        const {privateKeyPem, ...rest } = exportedKey;
-        authnKeys = {...rest};
-        privateKey = {privateKeyPem};
-      } else {
-        throw new NotFoundException("VerificationKey type not found");
-      }
+    let blockchainStatus: boolean = false;
+
+     // Check if anchoring to blockchain is enabled and get the method
+     const method = this.shouldAnchorToBlockchain();
+
+     if (method) {
+      try {
+      // Get the appropriate service from the factory
+      const anchorService = this.blockchainFactory.getAnchorService(method);
+      // Use the service to anchor the DID
+      const response = await anchorService.anchorDid(doc);
+
+      didUri = response.document.uri;
+      document = response.document;
+       
+      // store mnemonic and delegate keys in to vault
       privateKeys = {
-        [authnKeys.id]: privateKey
-      };
-    } catch (err: any) {
-            Logger.error(`Error generating key pair: ${err}`);
-      throw new InternalServerErrorException('Error generating key pair: ' + err.message);
+          "mnemonic":response.mnemonic,
+          "delegateKeys":response.delegateKeys
+        };  
+        blockchainStatus = true;
+      } catch (err) {
+        if (err instanceof HttpException) {
+          throw err;
+        }
+        Logger.error(`Error anchoring to Cord: ${err}`);
+        throw new InternalServerErrorException('Failed to anchor DID to Cord blockchain');
+      }
+    } else {
+      
+      didUri = this.generateDidUri(doc?.method, doc?.id, doc?.webDidBaseUrl);
+  
+      let authnKeys;
+      let verificationKey = await this.getVerificationKeyByName(doc?.keyPairType);
+      if (!verificationKey) verificationKey = await this.getVerificationKey(this.signingAlgorithm);
+  
+      try {
+        const keyPair = await (verificationKey as any)?.key.generate({
+          id: `${didUri}#key-0`,
+          controller: didUri
+        });
+        const exportedKey = await keyPair.export({
+          publicKey: true, privateKey: true, includeContext: true
+        });
+  
+        let privateKey = {};
+        if (verificationKey?.name === "Ed25519VerificationKey2020") {
+          const { privateKeyMultibase, ...rest } = exportedKey;
+          authnKeys = rest;
+          privateKey = { privateKeyMultibase };
+        } else if (verificationKey?.name === "Ed25519VerificationKey2018") {
+          const { privateKeyBase58, ...rest } = exportedKey;
+          authnKeys = rest;
+          privateKey = { privateKeyBase58 };
+        } else if (verificationKey?.name === "RsaVerificationKey2018") {
+          const { privateKeyPem, ...rest } = exportedKey;
+          authnKeys = { ...rest };
+          privateKey = { privateKeyPem };
+        } else {
+          throw new NotFoundException("VerificationKey type not found");
+        }
+  
+        privateKeys = {
+          [authnKeys.id]: privateKey
+        };
+  
+        const keyId = authnKeys?.id;
+  
+        document = {
+          '@context': [
+            "https://www.w3.org/ns/did/v1"
+          ],
+          id: didUri,
+          alsoKnownAs: doc.alsoKnownAs,
+          service: doc.services,
+          verificationMethod: [
+            authnKeys,
+          ],
+          authentication: [keyId],
+          assertionMethod: [keyId]
+        };
+  
+      } catch (err: any) {
+        Logger.error(`Error generating key pair: ${err}`);
+        throw new InternalServerErrorException('Error generating key pair: ' + err.message);
+      }
     }
-
-    const keyId = authnKeys?.id;
-
-    // Create a DID Document
-    const document: DIDDocument = {
-      '@context': [
-        "https://www.w3.org/ns/did/v1"
-      ],
-      id: didUri,
-      alsoKnownAs: doc.alsoKnownAs,
-      service: doc.services,
-      verificationMethod: [
-        authnKeys,
-      ],
-      authentication: [keyId],
-      assertionMethod: [keyId]
-    };
-
+  
     try {
       await this.prisma.identity.create({
         data: {
           id: didUri,
           didDoc: JSON.stringify(document),
+          blockchainStatus: blockchainStatus, 
         },
       });
     } catch (err) {
-      Logger.error(`Error writing DID to database ${err}`);
+      Logger.error(`Error writing DID to database: ${err}`);
       throw new InternalServerErrorException('Error writing DID to database');
     }
-
+  
     try {
       await this.vault.writePvtKey(privateKeys, didUri);
     } catch (err) {
-      Logger.error(err);
+      Logger.error(`Error writing private key to vault: ${err}`);
       throw new InternalServerErrorException('Error writing private key to vault');
     }
-
+  
     return document;
   }
+  
 
   async resolveDID(id: string): Promise<DIDDocument> {
     let artifact: Identity;
@@ -211,4 +248,27 @@ export class DidService {
     const webDidId = this.getWebDidIdForId(id);
     return this.resolveDID(webDidId);
   }
+
+
+
+  /**
+ * Determines if anchoring to a blockchain is enabled based on environment variables.
+ * Returns the blockchain type in lowercase if anchoring is enabled; otherwise, null.
+ * @returns The blockchain type (e.g., 'cord', 'solana') in lowercase if anchoring is enabled; otherwise, null.
+ */
+  private shouldAnchorToBlockchain(): string | null {
+    // Check if anchoring is enabled
+    if (
+      process.env.ANCHOR_TO_BLOCKCHAIN &&
+      process.env.ANCHOR_TO_BLOCKCHAIN.toLowerCase().trim() === 'true'
+    ) {
+      // Return the value of BLOCKCHAIN_TYPE in lowercase (default to null if undefined)
+      return process.env.BLOCKCHAIN_TYPE?.toLowerCase().trim() || null;
+    }
+  
+    return null; // Return null if blockchain anchoring is not enabled
+  }
+
+  
 }
+

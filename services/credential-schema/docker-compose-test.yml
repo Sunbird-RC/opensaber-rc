@@ -25,6 +25,9 @@ services:
       DATABASE_URL: postgres://postgres:postgres@db-test:5432/postgres
       IDENTITY_BASE_URL: "http://identity-service:3332"
       ENABLE_AUTH: "false"
+      ANCHOR_TO_BLOCKCHAIN: "${ANCHOR_TO_BLOCKCHAIN}"
+      BLOCKCHAIN_TYPE: "${BLOCKCHAIN_TYPE}"
+      ISSUER_AGENT_BASE_URL: "${ISSUER_AGENT_BASE_URL}"
     networks:
       test: 
       rcw-test:

@@ -11,6 +11,8 @@ import { PrismaHealthIndicator } from './utils/prisma.health';
 import { PrismaClient } from '@prisma/client';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
+import { AnchorCordService } from './schema/implementations/anchor-cord.service';
+import { BlockchainAnchorFactory } from './schema/factories/blockchain-anchor.factory';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { AuthGuard } from './auth/auth.guard';
     UtilsService,
     PrismaHealthIndicator,
     PrismaClient,
+    AnchorCordService,
+    BlockchainAnchorFactory,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,

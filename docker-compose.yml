@@ -243,6 +243,9 @@ services:
       - JWKS_URI=${JWKS_URI}
       - ENABLE_AUTH=${ENABLE_AUTH}
       - WEB_DID_BASE_URL=${WEB_DID_BASE_URL}
+      - ANCHOR_TO_BLOCKCHAIN=${ANCHOR_TO_BLOCKCHAIN}
+      - BLOCKCHAIN_TYPE=${BLOCKCHAIN_TYPE}
+      - ISSUER_AGENT_BASE_URL=${ISSUER_AGENT_BASE_URL}
     healthcheck:
       test:
         [ "CMD-SHELL", "curl -f http://localhost:3332/health || exit 1" ]
@@ -263,6 +266,9 @@ services:
       - IDENTITY_BASE_URL=${IDENTITY_BASE_URL}
       - JWKS_URI=${JWKS_URI}
       - ENABLE_AUTH=${ENABLE_AUTH}
+      - ANCHOR_TO_BLOCKCHAIN=${ANCHOR_TO_BLOCKCHAIN}
+      - BLOCKCHAIN_TYPE=${BLOCKCHAIN_TYPE}
+      - ISSUER_AGENT_BASE_URL=${ISSUER_AGENT_BASE_URL}
     healthcheck:
       test:
         [ "CMD-SHELL", "curl -f http://localhost:3333/health || exit 1" ]
@@ -288,6 +294,10 @@ services:
       - JWKS_URI=${JWKS_URI}
       - ENABLE_AUTH=${ENABLE_AUTH}
       - QR_TYPE=${QR_TYPE}
+      - ANCHOR_TO_BLOCKCHAIN=${ANCHOR_TO_BLOCKCHAIN}
+      - BLOCKCHAIN_TYPE=${BLOCKCHAIN_TYPE}
+      - ISSUER_AGENT_BASE_URL=${ISSUER_AGENT_BASE_URL}
+      - VERIFICATION_MIDDLEWARE_BASE_URL=${VERIFICATION_MIDDLEWARE_BASE_URL}
     healthcheck:
       test:
         [ "CMD-SHELL", "curl -f http://localhost:3000/health || exit 1" ]

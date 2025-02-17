@@ -6,6 +6,8 @@ import { SchemaService } from '../schema/schema.service';
 import { HttpModule } from '@nestjs/axios';
 import { UtilsService } from '../utils/utils.service';
 import { PrismaClient } from '@prisma/client';
+import { BlockchainAnchorFactory } from 'src/schema/factories/blockchain-anchor.factory';
+import { AnchorCordService } from 'src/schema/implementations/anchor-cord.service';
 
 @Module({
   imports: [HttpModule],
@@ -15,6 +17,8 @@ import { PrismaClient } from '@prisma/client';
     ValidateTemplateService,
     SchemaService,
     UtilsService,
+    BlockchainAnchorFactory,
+    AnchorCordService,
   ],
   controllers: [RenderingTemplatesController],
 })

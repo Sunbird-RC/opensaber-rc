@@ -110,7 +110,7 @@ describe('CredentialsController', () => {
       const id = '1';
       const req = { headers: { accept: 'application/pdf' } } as Request;
 
-      await expect(async () => controller.getCredentialById(id, req)).rejects.toThrow(new BadRequestException("Template id is required"));
+      await expect(async () => controller.getCredentialById(id, req)).rejects.toThrow(new BadRequestException("Template id or template is required"));
     });
   });
 

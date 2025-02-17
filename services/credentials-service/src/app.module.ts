@@ -21,6 +21,6 @@ import { RevocationListModule } from './revocation-list/revocation-list.module';
     RevocationListModule,
   ],
   controllers: [AppController],
-  providers: [HttpService, HealthCheckService, AppService, ConfigService, PrismaClient, HealthCheckUtilsService, RevocationList, RevocationListImpl, RevocationListService],
+  providers: [  AppService, ConfigService, PrismaClient, HealthCheckUtilsService, RevocationList, RevocationListImpl, RevocationListService],
 })
 export class AppModule {}

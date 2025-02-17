@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Prisma, VerifiableCredentialSchema } from '@prisma/client';
+import { Prisma, VerifiableCredentialSchema ,BlockchainStatus} from '@prisma/client';
 
 // represents the schema stored in Prisma
 export class VCItem implements VerifiableCredentialSchema {
@@ -34,4 +34,6 @@ export class VCItem implements VerifiableCredentialSchema {
   createdBy: string;
   updatedBy: string;
   deprecatedId: string;
+  @ApiProperty({ enum: BlockchainStatus, description: 'Blockchain status' })
+  blockchainStatus: BlockchainStatus | null; 
 }

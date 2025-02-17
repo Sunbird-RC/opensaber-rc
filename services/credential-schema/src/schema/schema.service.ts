@@ -16,13 +16,15 @@ import { DefinedError } from 'ajv';
 import { CreateCredentialDTO } from './dto/create-credentials.dto';
 import { UtilsService } from '../utils/utils.service';
 import { GetCredentialSchemaDTO } from './dto/getCredentialSchema.dto';
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
 
 @Injectable()
 export class SchemaService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly utilService: UtilsService,
-  ) {}
+    private readonly blockchainFactory: BlockchainAnchorFactory
+  ) { }
   private logger = new Logger(SchemaService.name);
   private semanticVersionRegex =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
@@ -58,6 +60,7 @@ export class SchemaService {
         createdBy: schema.createdBy,
         updatedBy: schema.updatedBy,
         deprecatedId: schema.deprecatedId,
+        blockchainStatus: schema.blockchainStatus,
       } as GetCredentialSchemaDTO;
     } else {
       this.logger.error('schema not found for userInput', userWhereUniqueInput);
@@ -118,9 +121,30 @@ export class SchemaService {
         createdBy: schema.createdBy,
         updatedBy: schema.updatedBy,
         deprecatedId: schema.deprecatedId,
+        blockchainStatus: schema.blockchainStatus,
       };
     });
   }
+
+
+  /**
+ * Determines if anchoring to a blockchain is enabled based on environment variables.
+ * Returns the blockchain type in lowercase if anchoring is enabled; otherwise, null.
+ * @returns The blockchain type (e.g., 'cord', 'solana') in lowercase if anchoring is enabled; otherwise, null.
+ */
+private shouldAnchorToBlockchain(): string | null {
+  // Check if anchoring is enabled
+  if (
+    process.env.ANCHOR_TO_BLOCKCHAIN &&
+    process.env.ANCHOR_TO_BLOCKCHAIN.toLowerCase().trim() === 'true'
+  ) {
+    // Return the value of BLOCKCHAIN_TYPE in lowercase (default to null if undefined)
+    return process.env.BLOCKCHAIN_TYPE?.toLowerCase().trim() || null;
+  }
+
+  return null; // Return null if blockchain anchoring is not enabled
+}
+
 
   async createCredentialSchema(
     createCredentialDto: CreateCredentialDTO,
@@ -129,91 +153,111 @@ export class SchemaService {
   ) {
     const data = createCredentialDto.schema;
     const tags = createCredentialDto.tags;
+    let blockchainSchemaId: string | null = null;
+    let did: string | null = null;
 
-    // verify the Credential Schema
-    if (validate(data)) {
-      let did;
-      if (generateDID) {
-        const didBody = {
-          content: [
-            {
-              alsoKnownAs: [data.author, data.schema.$id],
-              services: [
-                {
-                  id: 'CredentialSchemaService',
-                  type: 'CredentialSchema',
-                },
-              ],
-              method: 'schema',
-            },
-          ],
-        };
-        did = await this.utilService.generateDID(didBody);
-        this.logger.debug('DID received from identity service', did);
-      }
-
-      const credSchema = {
-        schema: {
-          type: data.type,
-          id: did ? did.id : data.id,
-          version: data.version ? data.version : '0.0.0',
-          name: data.name,
-          author: data.author,
-          authored: data.authored,
-          schema: data.schema,
-          proof: data.proof,
-        },
-        tags: tags,
-        status: createCredentialDto.status,
-        deprecatedId: createCredentialDto.deprecatedId,
-      };
-
-      // sign the credential schema (only the schema part of the credSchema object above since it is the actual schema)
-      // const proof = await this.utilService.sign(
-      //   credSchema.schema.author,
-      //   credSchema.schema,
-      // );
-      // credSchema.schema.proof = proof;
-
-      try {
-        const resp = await this.prisma.verifiableCredentialSchema.create({
-          data: {
-            id: credSchema.schema.id,
-            type: credSchema.schema?.type as string,
-            version: credSchema.schema.version,
-            name: credSchema.schema.name as string,
-            author: credSchema.schema.author as string,
-            authored: credSchema.schema.authored,
-            schema: credSchema.schema.schema as Prisma.JsonValue,
-            status: credSchema.status as SchemaStatus,
-            proof: credSchema.schema.proof as Prisma.JsonValue || undefined,
-            tags: credSchema.tags as string[],
-            deprecatedId: deprecatedId,
-          },
-        });
-
-        credSchema['createdAt'] = resp.createdAt;
-        credSchema['updatedAt'] = resp.updatedAt;
-        credSchema['deletedAt'] = resp.deletedAt;
-        credSchema['createdBy'] = resp.createdBy;
-        credSchema['updatedBy'] = resp.updatedBy;
-      } catch (err) {
-        this.logger.error('Error saving schema to db', err);
-        throw new InternalServerErrorException('Error saving schema to db');
-      }
-      return credSchema;
-    } else {
+    // Validate the credential schema
+    if (!validate(data)) {
       this.logger.log('Schema validation failed', validate.errors.join('\n'));
       for (const err of validate.errors as DefinedError[]) {
         this.logger.error(err, err.message);
       }
       throw new BadRequestException(
-        `Schema validation failed with the following errors: ${validate.errors.join(
-          '\n',
-        )}`,
+        `Schema validation failed with the following errors: ${validate.errors.join('\n')}`,
       );
     }
+    // Check if anchoring to blockchain is enabled and get the method
+    const method = this.shouldAnchorToBlockchain();
+
+    if (method) {
+      // Get the appropriate service from the factory
+      const anchorService = this.blockchainFactory.getAnchorService(method);
+      const response = await anchorService.anchorSchema(data);
+
+      blockchainSchemaId = response.schemaId;
+      did = blockchainSchemaId;
+    } else if (generateDID) {
+      // Generate a DID if anchoring is not enabled and generateDID is true
+      const didBody = {
+        content: [
+          {
+            alsoKnownAs: [data.author, data.schema.$id],
+            services: [
+              {
+                id: 'CredentialSchemaService',
+                type: 'CredentialSchema',
+              },
+            ],
+            method: 'schema',
+          },
+        ],
+      };
+
+      // Generate DID
+      const generatedDidResponse = await this.utilService.generateDID(didBody);
+      this.logger.debug('DID received from identity service', generatedDidResponse);
+      did = generatedDidResponse?.id || null;
+
+    }
+
+
+    const credSchema = {
+      schema: {
+        type: data.type,
+        id: did ? did : data.id,
+        version: data.version ? data.version : '0.0.0',
+        name: data.name,
+        author: data.author,
+        authored: data.authored,
+        schema: data.schema,
+        proof: data.proof,
+      },
+      tags: tags,
+      status: createCredentialDto.status,
+      deprecatedId: createCredentialDto.deprecatedId,
+      blockchainStatus: blockchainSchemaId ? 'ANCHORED' : null,
+    };
+
+    //     // sign the credential schema (only the schema part of the credSchema object above since it is the actual schema)
+    //     // const proof = await this.utilService.sign(
+    //     //   credSchema.schema.author,
+    //     //   credSchema.schema,
+    //     // );
+    //     // credSchema.schema.proof = proof;
+
+    // Save the credential schema to the database
+    try {
+      const resp = await this.prisma.verifiableCredentialSchema.create({
+        data: {
+          id: credSchema.schema.id,
+          type: credSchema.schema.type as string,
+          version: credSchema.schema.version,
+          name: credSchema.schema.name as string,
+          author: credSchema.schema.author as string,
+          authored: credSchema.schema.authored,
+          schema: credSchema.schema.schema as Prisma.JsonValue,
+          status: credSchema.status as SchemaStatus,
+          proof: credSchema.schema.proof as Prisma.JsonValue || undefined,
+          tags: credSchema.tags as string[],
+          deprecatedId: deprecatedId,
+          blockchainStatus: blockchainSchemaId ? 'ANCHORED' : null,
+        },
+      });
+
+
+      credSchema['createdAt'] = resp.createdAt;
+      credSchema['updatedAt'] = resp.updatedAt;
+      credSchema['deletedAt'] = resp.deletedAt;
+      credSchema['createdBy'] = resp.createdBy;
+      credSchema['updatedBy'] = resp.updatedBy;
+
+      return credSchema;
+    } catch (err) {
+      this.logger.error('Error saving schema to db', err);
+      throw new InternalServerErrorException('Error saving schema to db');
+    }
   }
+
 
   private formatResponse(schema: VerifiableCredentialSchema) {
     return JSON.parse(
@@ -235,6 +279,7 @@ export class SchemaService {
         createdBy: schema?.createdBy,
         updatedBy: schema?.updatedBy,
         deprecatedId: schema?.deprecatedId,
+        blockchainStatus: schema?.blockchainStatus,
       }),
     );
   }

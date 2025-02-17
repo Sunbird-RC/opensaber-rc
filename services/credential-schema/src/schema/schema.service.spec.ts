@@ -9,7 +9,8 @@ import {
 } from './schema.fixtures';
 import { BadRequestException, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { GetCredentialSchemaDTO } from './dto/getCredentialSchema.dto';
-
+import { BlockchainAnchorFactory } from './factories/blockchain-anchor.factory';
+import { AnchorCordService } from './implementations/anchor-cord.service';
 describe('SchemaService', () => {
   let service: SchemaService;
   let prisma: PrismaClient;
@@ -17,7 +18,7 @@ describe('SchemaService', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [HttpModule],
-      providers: [SchemaService, UtilsService, PrismaClient],
+      providers: [SchemaService, UtilsService, PrismaClient,BlockchainAnchorFactory,AnchorCordService],
     }).compile();
     service = module.get<SchemaService>(SchemaService);
     prisma = module.get<PrismaClient>(PrismaClient);
@@ -320,6 +321,7 @@ describe('SchemaService', () => {
         createdBy: schema.createdBy,
         updatedBy: schema.updatedBy,
         deprecatedId: schema.deprecatedId,
+        blockchainStatus:schema.blockchainStatus,
       })));
     });
 

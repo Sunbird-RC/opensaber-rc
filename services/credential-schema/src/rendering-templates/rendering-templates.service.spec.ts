@@ -11,11 +11,13 @@ import {
   generateTestDIDBody,
 } from '../schema/schema.fixtures';
 
+import { BlockchainAnchorFactory } from '../schema/factories/blockchain-anchor.factory';
+import { AnchorCordService } from '../schema/implementations/anchor-cord.service';
 describe('RenderingTemplatesService', () => {
   let service: RenderingTemplatesService;
   let schemaService: SchemaService;
   let utilsService: UtilsService;
-
+ 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [HttpModule],
@@ -25,6 +27,8 @@ describe('RenderingTemplatesService', () => {
         ValidateTemplateService,
         SchemaService,
         UtilsService,
+        BlockchainAnchorFactory,
+        AnchorCordService
       ],
     }).compile();
 

@@ -18,6 +18,12 @@ enum SchemaStatus {
   REVOKED
 }
 
+enum BlockchainStatus {
+  PENDING
+  ANCHORED
+  FAILED
+}
+
 model VerifiableCredentialSchema {
   id           String
   type         String
@@ -35,6 +41,7 @@ model VerifiableCredentialSchema {
   tags         String[]
   status       SchemaStatus @default(DRAFT)
   deprecatedId String?
+  blockchainStatus BlockchainStatus?
 
   @@id([id, version])
   @@index([type], type: Hash)

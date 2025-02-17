@@ -38,4 +38,5 @@ export class UtilsService {
       throw new InternalServerErrorException('Can not generate a new DID');
     }
   }
+
 }
