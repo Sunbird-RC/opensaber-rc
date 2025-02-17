@@ -14,7 +14,7 @@ export class AnchorCordService implements BlockchainAnchor {
         `${process.env.ISSUER_AGENT_BASE_URL}/schema`,
         body,
       );
-      return response.data.result;
+      return response.data;
     } catch (err) {
       const errorDetails = {
         message: err.message,

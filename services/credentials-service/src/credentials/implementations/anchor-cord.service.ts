@@ -40,7 +40,7 @@ export class AnchorCordService implements BlockchainAnchor {
         );
 
       this.logger.debug('Credential successfully anchored');
-      let anchoredResult = anchorHttpResponse.data.result;
+      let anchoredResult = anchorHttpResponse.data;
       this.logger.debug('Credential successfully anchored to Cord:', anchoredResult);
       const {
         id, issuer, issuanceDate, validUntil: expirationDate, credentialSubject, proof,
