@@ -17,7 +17,8 @@ export class AnchorCordService implements BlockchainAnchor {
         `${process.env.ISSUER_AGENT_BASE_URL}/did/create/`,
         body,
       );
-      return response.data.result;
+      console.log(response.data)
+      return response.data;
     } catch (err) {
       this.logger.error('Error anchoring DID to CORD blockchain', err);
       throw new InternalServerErrorException('Failed to anchor DID to CORD blockchain');
